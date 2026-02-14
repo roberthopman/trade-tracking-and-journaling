@@ -1,6 +1,6 @@
 # Intro
 
-This is a trade tracking and journaling application.
+This is a trade tracking and journaling application. More details in [CLAUDE.md](CLAUDE.md).
 
 ## Production
 
@@ -90,4 +90,3 @@ bin/rake fix
 > occasionally produce incorrect results. After running `fix`, you should
 > review the changes and make sure the code still works as intended.
 
-More details in [CLAUDE.md](CLAUDE.md)
