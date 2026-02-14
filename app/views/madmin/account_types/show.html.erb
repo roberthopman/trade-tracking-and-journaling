@@ -1,0 +1,183 @@
+<%= content_for :title, "Account Type - #{@account_type.name}" %>
+
+<header class="header">
+  <h1>Account Type Details</h1>
+
+  <div class="actions">
+    <%= link_to "Back to Firms", madmin_firms_path, class: "btn btn-secondary" %>
+    <%= link_to "Edit", edit_madmin_firm_account_type_path(@firm, @account_type), class: "btn btn-primary" %>
+    <%= button_to "Delete",
+          madmin_firm_account_type_path(@firm, @account_type),
+          method: :delete,
+          data: {turbo_confirm: "Are you sure you want to delete this account type?"},
+          class: "btn btn-danger" %>
+  </div>
+</header>
+
+<div class="bg-white rounded-lg shadow p-6">
+  <div class="grid grid-cols-2 gap-6 mb-8">
+    <div>
+      <h3 class="text-sm font-medium text-gray-500 mb-1">Account Size</h3>
+      <p class="text-lg font-mono"><%= number_to_currency(@account_type.initial_balance, precision: 2) %></p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500 mb-1">Phase</h3>
+      <p class="text-lg"><%= @account_type.phase_display_name %></p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500 mb-1">Name</h3>
+      <p class="text-lg"><%= @account_type.name %></p>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-gray-500 mb-1">Status</h3>
+      <p class="text-lg"><%= @account_type.status.titleize %></p>
+    </div>
+  </div>
+
+  <!-- Rules Section -->
+  <% if @account_type.account_rules.any? %>
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 2rem; margin-top: 2rem;">
+      <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem;">
+        Configured Rules
+      </h3>
+
+      <% rules_scope = @account_type.account_rules.joins(:rule) %>
+      <% trading_rules = rules_scope.merge(Rule.trading_rules).order("rules.sort_order") %>
+      <% if trading_rules.any? %>
+        <div style="margin-bottom: 2rem;">
+          <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #374151;">
+            Trading Rules
+          </h4>
+          <div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+            <% trading_rules.each do |account_rule| %>
+              <div style="padding: 1rem; background-color: #f9fafb; border-radius: 0.375rem;">
+                <div style="font-weight: 500; margin-bottom: 0.25rem;">
+                  <%= account_rule.rule.name %>
+                </div>
+                <div style="font-size: 1.25rem; color: #1f2937;">
+                  <% if account_rule.rule.data_type == "currency_amount" %>
+                    $<%= number_with_precision(account_rule.rule_value, precision: 2) %>
+                  <% else %>
+                    <%= account_rule.rule_value %>
+                    <%= account_rule.rule.data_type == "percentage" ? "%" : "" %>
+                  <% end %>
+                </div>
+                <% if account_rule.rule.description.present? %>
+                  <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                    <%= account_rule.rule.description %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% trading_restrictions = rules_scope.merge(Rule.trading_restrictions).order("rules.sort_order") %>
+      <% if trading_restrictions.any? %>
+        <div style="margin-bottom: 2rem;">
+          <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #374151;">
+            Trading Restrictions
+          </h4>
+          <div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+            <% trading_restrictions.each do |account_rule| %>
+              <div style="padding: 1rem; background-color: #f9fafb; border-radius: 0.375rem;">
+                <div style="font-weight: 500; margin-bottom: 0.25rem;">
+                  <%= account_rule.rule.name %>
+                </div>
+                <div style="font-size: 1.25rem; color: #1f2937;">
+                  <% value_string = account_rule.rule_value.to_s.downcase %>
+                  <% if ["true", "1"].include?(value_string) %>
+                    <span style="color: #059669;">✓ Allowed</span>
+                  <% else %>
+                    <span style="color: #dc2626;">✗ Not Allowed</span>
+                  <% end %>
+                </div>
+                <% if account_rule.rule.description.present? %>
+                  <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                    <%= account_rule.rule.description %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% payout_rules = rules_scope.merge(Rule.payout_rules).order("rules.sort_order") %>
+      <% if payout_rules.any? %>
+        <div style="margin-bottom: 2rem;">
+          <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #374151;">
+            Payout Rules
+          </h4>
+          <div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+            <% payout_rules.each do |account_rule| %>
+              <div style="padding: 1rem; background-color: #f9fafb; border-radius: 0.375rem;">
+                <div style="font-weight: 500; margin-bottom: 0.25rem;">
+                  <%= account_rule.rule.name %>
+                </div>
+                <div style="font-size: 1.25rem; color: #1f2937;">
+                  <% if account_rule.rule.data_type == "currency_amount" %>
+                    $<%= number_with_precision(account_rule.rule_value, precision: 2) %>
+                  <% else %>
+                    <%= account_rule.rule_value %>
+                    <% if account_rule.rule.data_type == "percentage" %>
+                      %
+                    <% elsif account_rule.rule.data_type == "integer_count" %>
+                      days
+                    <% end %>
+                  <% end %>
+                </div>
+                <% if account_rule.rule.description.present? %>
+                  <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                    <%= account_rule.rule.description %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% payout_restrictions = rules_scope.merge(Rule.payout_restrictions).order("rules.sort_order") %>
+      <% if payout_restrictions.any? %>
+        <div>
+          <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #374151;">
+            Payout Restrictions
+          </h4>
+          <div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+            <% payout_restrictions.each do |account_rule| %>
+              <div style="padding: 1rem; background-color: #f9fafb; border-radius: 0.375rem;">
+                <div style="font-weight: 500; margin-bottom: 0.25rem;">
+                  <%= account_rule.rule.name %>
+                </div>
+                <div style="font-size: 1.25rem; color: #1f2937;">
+                  <% restriction_value = account_rule.rule_value.to_s.downcase %>
+                  <% if ["true", "1"].include?(restriction_value) %>
+                    <span style="color: #059669;">✓ Required</span>
+                  <% else %>
+                    <span style="color: #6b7280;">○ Not Required</span>
+                  <% end %>
+                </div>
+                <% if account_rule.rule.description.present? %>
+                  <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                    <%= account_rule.rule.description %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 2rem; margin-top: 2rem;">
+      <p style="text-align: center; color: #6b7280;">
+        No rules configured for this account type.
+      </p>
+    </div>
+  <% end %>
+</div>

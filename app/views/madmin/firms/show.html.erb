@@ -1,0 +1,105 @@
+<%= content_for :title, @firm.name %>
+
+<header class="header">
+  <h1>
+    <%= link_to "Firms", madmin_firms_path %>
+    /
+    <%= @firm.name %>
+  </h1>
+
+  <div class="actions">
+    <%= link_to "New Account Type",
+          new_madmin_firm_account_type_path(@firm),
+          class: "btn btn-primary" %>
+    <%= link_to "Edit", edit_madmin_firm_path(@firm), class: "btn btn-secondary" %>
+    <%= button_to "Delete",
+          madmin_firm_path(@firm),
+          method: :delete,
+          data: {turbo_confirm: "Are you sure?"},
+          class: "btn btn-danger" %>
+  </div>
+</header>
+
+<div class="table-scroll">
+  <table>
+    <tbody>
+      <tr>
+        <th class="label">Name</th>
+        <td><%= @firm.name %></td>
+      </tr>
+
+      <tr>
+        <th class="label">Status</th>
+        <td><%= @firm.status.titleize %></td>
+      </tr>
+
+      <tr>
+        <th class="label">Created At</th>
+        <td><%= @firm.created_at.strftime("%B %d, %Y at %I:%M %p") %></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Account Types Section -->
+<% account_types = @firm.accounts.templates.order(phase: :asc, initial_balance: :asc) %>
+<div style="margin-top: 3rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 600;">Account Types</h2>
+  </div>
+
+  <% if account_types.any? %>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Account Size</th>
+            <th>Rules Summary</th>
+            <th></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% account_types.each do |account_type| %>
+            <tr>
+              <td><%= account_type.phase_display_name %></td>
+              <td><%= number_to_currency(
+                        account_type.initial_balance,
+                        precision: 2
+                      ) %></td>
+              <td>
+                <% if account_type.account_rules.any? %>
+                  <span style="color: #059669; font-weight: 500;"><%= account_type.account_rules.count %> rules configured</span>
+                <% else %>
+                  <span style="color: #dc2626;">No rules</span>
+                <% end %>
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.5rem;">
+                  <%= link_to "View",
+                        madmin_firm_account_type_path(@firm, account_type),
+                        class: "text-blue-600 hover:text-blue-800" %>
+                  <%= link_to "Edit",
+                        edit_madmin_firm_account_type_path(@firm, account_type),
+                        class: "text-indigo-600 hover:text-indigo-800" %>
+                  <%= button_to "Delete",
+                        madmin_firm_account_type_path(@firm, account_type),
+                        method: :delete,
+                        data: {turbo_confirm: "Are you sure?"},
+                        class: "text-red-600 hover:text-red-800",
+                        form: {style: "display: inline;"} %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p style="text-align: center; padding: 2rem; background-color: #f9fafb; border-radius: 0.5rem; color: #6b7280;">
+      No account types configured yet.
+      <%= link_to "Create your first account type", new_madmin_firm_account_type_path(@firm) %>
+    </p>
+  <% end %>
+</div>

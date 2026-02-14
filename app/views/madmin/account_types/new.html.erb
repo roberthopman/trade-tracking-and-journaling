@@ -1,0 +1,51 @@
+<%= content_for :title, "New Account Type - #{@firm.name}" %>
+
+<header class="header">
+  <h1>New Account Type - <%= @firm.name %></h1>
+</header>
+
+<%= form_with model: @account_type, url: madmin_firm_account_types_path(@firm) do |form| %>
+  <% if @account_type.errors.any? %>
+    <div style="color: red; margin-bottom: 1rem;">
+      <h2><%= pluralize(@account_type.errors.count, "error") %> prohibited this account type from being saved:</h2>
+      <ul>
+        <% @account_type.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :initial_balance, "Account Size" %>
+    <%= form.number_field :initial_balance,
+          placeholder: "50000",
+          step: 1,
+          min: 0,
+          class: "form-control" %>
+  </div>
+
+  <div class="field">
+    <%= form.label :name %>
+    <%= form.text_field :name,
+          placeholder: "e.g., growth",
+          class: "form-control" %>
+  </div>
+
+  <div class="field">
+    <%= form.label :phase %>
+    <%= form.select :phase,
+          Account::PHASES.map { |p|
+            [Account::PHASE_DISPLAY_NAMES[p] || p.titleize, p]
+          },
+          {selected: "sim-funded"},
+          class: "form-control" %>
+  </div>
+
+  <%= render "rules_fields", form: form %>
+
+  <div class="actions">
+    <%= form.submit "Create Account Type", class: "btn btn-primary" %>
+    <%= link_to "Cancel", madmin_firms_path, class: "btn btn-secondary" %>
+  </div>
+<% end %>

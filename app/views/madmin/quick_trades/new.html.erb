@@ -1,0 +1,213 @@
+<% content_for :title, "Quick Add Trades" %>
+
+<div class="header">
+  <h1>Quick Add Trades</h1>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+  <%= form_with url: madmin_quick_trades_path, local: true, data: {controller: "quick-trade"} do |form| %>
+
+    <!-- Common Trade Information -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="field">
+        <%= label_tag :trade_date,
+              "Trade Date",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= date_field_tag :trade_date,
+              Date.current,
+              required: true,
+              autocomplete: "off",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <div class="field">
+        <%= label_tag :symbol,
+              "Symbol",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= text_field_tag :symbol,
+              nil,
+              required: true,
+              placeholder: "e.g., EURUSD, NAS100",
+              autocomplete: "off",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <div class="field">
+        <%= label_tag :trade_type,
+              "Trade Type",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :trade_type,
+              options_for_select([["Buy/Long", "buy"], ["Sell/Short", "sell"]]),
+              required: true,
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+    </div>
+
+    <!-- Tags Input -->
+    <div class="mb-6"
+      data-controller="tag-input"
+      data-tag-input-available-value="<%= current_user.tags.pluck(:name).to_json %>">
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        Tags (optional)
+      </label>
+      <div class="flex flex-wrap gap-2 mb-2" data-tag-input-target="tagsList"></div>
+      <div class="mb-2" data-tag-input-target="suggestions"></div>
+      <input type="text"
+             data-tag-input-target="input"
+             data-action="keydown->tag-input#addTag"
+             placeholder="Type a tag and press Enter or comma"
+             autocomplete="off"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md
+               focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <input type="hidden" name="tag_list" data-tag-input-target="hiddenInput">
+      <p class="text-xs text-gray-500 mt-1">
+        Press Enter or comma to add a tag, or click an existing tag above.
+        These tags will be applied to all created trades.
+      </p>
+    </div>
+
+    <!-- Account Selection and P&L Entry -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Select Accounts and Enter P&L</h3>
+        <div class="flex gap-2">
+          <button type="button"
+                  data-action="click->quick-trade#selectAll"
+                  class="btn btn-secondary btn-sm">
+            Select All
+          </button>
+          <button type="button"
+                  data-action="click->quick-trade#clearAll"
+                  class="btn btn-secondary btn-sm">
+            Clear All
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-3 border border-gray-200 rounded-md p-4">
+        <% @accounts.each do |account| %>
+          <div class="flex items-center space-x-4 p-3 border border-gray-100
+            rounded-md hover:bg-gray-50"
+            data-quick-trade-target="accountRow">
+
+            <!-- Account Selection Checkbox -->
+            <div class="flex-shrink-0">
+              <%= check_box_tag "account_#{account.id}",
+                    account.id,
+                    false,
+                    {
+                      tabindex: -1,
+                      data: {
+                        action: "change->quick-trade#toggleAccount",
+                        quick_trade_target: "accountCheckbox"
+                      },
+                      class: "h-4 w-4 text-blue-600 focus:ring-blue-500 " \
+                             "border-gray-300 rounded"
+                    } %>
+            </div>
+
+            <!-- Account Information -->
+            <div class="flex-grow min-w-0">
+              <div class="flex items-center space-x-2">
+                <span class="font-medium text-gray-900">
+                  <%= account.to_s %>
+                </span>
+                <span class="px-2 py-1 text-xs font-medium rounded-full
+                  <%= case account.phase
+                      when "evaluation" then "bg-yellow-100 text-yellow-800"
+                      when "funded" then "bg-green-100 text-green-800"
+                      else "bg-gray-100 text-gray-800"
+                      end %>">
+                  <%= account.phase.humanize %>
+                </span>
+              </div>
+              <div class="text-sm text-gray-500">
+                <span><%= account.firm.name %></span>
+                <span class="mx-2">•</span>
+                <span>Balance: <%= number_to_currency(account.current_balance) %></span>
+                <% if account.peak_balance %>
+                  <span class="mx-2">•</span>
+                  <span>Peak: <%= number_to_currency(account.peak_balance) %></span>
+                <% end %>
+                <% if account.available_drawdown %>
+                  <span class="mx-2">•</span>
+                  <span class="<%= account.available_drawdown >= 0 ? "text-green-600" : "text-red-600" %>">
+                    Available DD: <%= number_to_currency(account.available_drawdown) %>
+                  </span>
+                <% end %>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                <% max_loss_rule = account.account_rules.joins(:rule).find_by(rules: {name: "Max Total Loss ($)"}) %>
+                <% if max_loss_rule %>
+                  <span>Max Loss: $<%= number_with_precision(max_loss_rule.rule_value, precision: 0) %></span>
+                  <% if account.peak_balance %>
+                    <% suggested_threshold = account.peak_balance - max_loss_rule.rule_value.to_f %>
+                    <span class="mx-2">•</span>
+                    <span class="text-blue-600">Suggested Threshold: <%= number_to_currency(suggested_threshold) %></span>
+                  <% end %>
+                <% else %>
+                  <span class="text-yellow-600">⚠ Add Max Loss rule</span>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- P&L Input -->
+            <div class="flex-shrink-0 w-32">
+              <%= number_field_tag "account_pnls[#{account.id}]",
+                    nil,
+                    {
+                      placeholder: "P&L",
+                      step: 0.01,
+                      disabled: true,
+                      autocomplete: "off",
+                      data: {
+                        quick_trade_target: "pnlInput",
+                        action: "input->quick-trade#updateSubmitButton"
+                      },
+                      class: "w-full px-2 py-1 text-sm border border-gray-300 " \
+                             "rounded focus:outline-none focus:ring-1 " \
+                             "focus:ring-blue-500 disabled:bg-gray-100"
+                    } %>
+            </div>
+
+            <!-- Auto Liquidity Threshold Input -->
+            <div class="flex-shrink-0 w-40">
+              <%= number_field_tag "account_thresholds[#{account.id}]",
+                    account.auto_liquidity_threshold,
+                    {
+                      placeholder: "Threshold",
+                      step: 0.01,
+                      disabled: true,
+                      autocomplete: "off",
+                      data: {
+                        quick_trade_target: "thresholdInput"
+                      },
+                      class: "w-full px-2 py-1 text-sm border border-gray-300 " \
+                             "rounded focus:outline-none focus:ring-1 " \
+                             "focus:ring-blue-500 disabled:bg-gray-100"
+                    } %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+      <div class="text-sm text-gray-600">
+        <span data-quick-trade-target="selectedCount">0</span> accounts selected
+      </div>
+
+      <div class="flex space-x-3">
+        <%= link_to "Cancel", madmin_root_path, class: "btn btn-secondary" %>
+        <%= submit_tag "Add Trades",
+              class: "btn btn-primary",
+              data: {quick_trade_target: "submitButton", disabled: true} %>
+      </div>
+    </div>
+
+  <% end %>
+</div>

@@ -1,0 +1,145 @@
+<% content_for :title, "Firms" %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">Firms</h1>
+    <div class="flex gap-2">
+      <%= link_to "New Firm", new_madmin_firm_path, class: "btn btn-primary" %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-lg shadow p-4 mb-4">
+  <%= form_with url: madmin_firms_path,
+        method: :get,
+        local: true,
+        class: "grid grid-cols-1 md:grid-cols-3 gap-4" do |f| %>
+    <div>
+      <%= f.label :name,
+            "Name",
+            class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.text_field :name,
+            value: params[:name],
+            placeholder: "Search by name",
+            autocomplete: "off",
+            class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                   "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+    </div>
+
+    <div>
+      <%= f.label :status,
+            "Status",
+            class: "block text-sm font-medium text-gray-700 mb-1" %>
+      <%= f.select :status,
+            options_for_select(
+              [["All Statuses", ""]] + Firm::STATUSES.map { |s| [s.titleize, s] },
+              params[:status]
+            ),
+            {},
+            class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                   "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+    </div>
+
+    <div class="flex items-end gap-2">
+      <%= f.submit "Filter", class: "btn btn-primary" %>
+      <% if params[:status].present? || params[:name].present? %>
+        <%= link_to "Clear", madmin_firms_path, class: "btn btn-secondary" %>
+      <% end %>
+    </div>
+  <% end %>
+  </div>
+</div>
+
+<!-- Firms List -->
+<% @records.each do |firm| %>
+  <div class="mb-12">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-semibold text-gray-900">
+        <%= firm.name %>
+        <span class="text-sm font-normal text-gray-500 ml-2">
+          (<%= firm.status.titleize %>)
+        </span>
+      </h2>
+      <div class="flex gap-2">
+        <%= link_to "New Account Type",
+              new_madmin_firm_account_type_path(firm),
+              class: "btn btn-outline-primary" %>
+      </div>
+    </div>
+
+    <% account_types = firm.accounts.templates.order(phase: :asc, initial_balance: :asc) %>
+
+    <% if account_types.any? %>
+      <h3 class="text-base font-semibold mb-3 text-gray-700">Account Types</h3>
+      <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Phase</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Account Size</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Rules Summary</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200">
+            <% account_types.each do |account_type| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= account_type.phase_display_name %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= number_to_currency(
+                        account_type.initial_balance,
+                        precision: 2
+                      ) %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <% if account_type.account_rules.any? %>
+                    <span class="text-green-600 font-medium">
+                      <%= account_type.account_rules.count %> rules configured
+                    </span>
+                  <% else %>
+                    <span class="text-red-600">No rules</span>
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                  <%= link_to "View",
+                        madmin_firm_account_type_path(firm, account_type),
+                        class: "text-blue-600 hover:text-blue-800 mr-3" %>
+                  <%= link_to "Edit",
+                        edit_madmin_firm_account_type_path(firm, account_type),
+                        class: "text-blue-600 hover:text-blue-800 mr-3" %>
+                  <%= button_to "Delete",
+                        madmin_firm_account_type_path(firm, account_type),
+                        method: :delete,
+                        data: {turbo_confirm: "Are you sure?"},
+                        class: "text-red-600 hover:text-red-800 font-medium",
+                        form: {style: "display: inline;"} %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="bg-gray-50 rounded-lg p-8 text-center">
+        <p class="text-gray-500">No account types configured yet.</p>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @records.empty? %>
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-6 py-8 text-center text-gray-500">
+      No firms found matching your filters.
+    </div>
+  </div>
+<% end %>
+
+<% if @pagy.pages > 1 %>
+  <div class="px-6 py-4 border-t border-gray-200 bg-white rounded-lg shadow">
+    <%== pagy_nav(@pagy) %>
+  </div>
+<% end %>

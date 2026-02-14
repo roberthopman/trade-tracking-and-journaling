@@ -1,0 +1,4 @@
+balance = field.value(record)
+  size = Account::ACCOUNT_SIZES.key(balance&.to_i) || balance&.to_i
+%>
+<%= "#{size} (#{number_to_currency(balance)})" %>

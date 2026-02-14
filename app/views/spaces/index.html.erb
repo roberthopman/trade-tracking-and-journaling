@@ -1,0 +1,125 @@
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">Your Spaces</h1>
+    <%= link_to "Create New Space",
+          new_space_path,
+          class: "bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors" %>
+  </div>
+
+  <!-- Active Spaces -->
+  <% if @active_spaces.any? %>
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Active Spaces</h2>
+      <div class="grid gap-4">
+        <% @active_spaces.each do |space| %>
+          <div class="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <h3 class="text-lg font-semibold text-gray-900"><%= space.name %></h3>
+                  <% if current_space == space %>
+                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">Current</span>
+                  <% end %>
+                  <% membership = current_user.membership_in(space) %>
+                  <% if membership %>
+                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+                      <%= membership.role.titleize %>
+                    </span>
+                  <% end %>
+                </div>
+                <% if space.description.present? %>
+                  <p class="text-gray-600 text-sm mb-3"><%= space.description %></p>
+                <% end %>
+                <div class="text-xs text-gray-500">
+                  Created <%= time_ago_in_words(space.created_at) %> ago
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 ml-4">
+                <% if current_space != space %>
+                  <%= link_to "Switch",
+                        switch_space_path(space),
+                        method: :post,
+                        data: {"turbo-method": :post},
+                        class: "px-3 py-2 text-sm font-medium text-blue-600 " \
+                               "hover:bg-blue-50 rounded-lg transition-colors" %>
+                <% end %>
+
+                <% if membership&.can_manage? %>
+                  <%= link_to "Edit",
+                        edit_space_path(space),
+                        class: "px-3 py-2 text-sm font-medium text-gray-700 " \
+                               "hover:bg-gray-100 rounded-lg transition-colors" %>
+                  <% if @active_spaces.count > 1 %>
+                    <%= link_to "Archive",
+                          archive_space_path(space),
+                          method: :patch,
+                          data: {
+                            "turbo-method": :patch,
+                            turbo_confirm: "Are you sure you want to archive this space?"
+                          },
+                          class: "px-3 py-2 text-sm font-medium text-red-600 " \
+                                 "hover:bg-red-50 rounded-lg transition-colors" %>
+                  <% else %>
+                    <span class="px-3 py-2 text-sm font-medium text-gray-400 cursor-not-allowed rounded-lg"
+                          title="Cannot archive your last active space">
+                      Archive
+                    </span>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+      <p class="text-yellow-800">You don't have any active spaces. Create one to get started!</p>
+    </div>
+  <% end %>
+
+  <!-- Inactive Spaces -->
+  <% if @inactive_spaces.any? %>
+    <div>
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">Archived Spaces</h2>
+      <div class="grid gap-4">
+        <% @inactive_spaces.each do |space| %>
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 opacity-75">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <h3 class="text-lg font-semibold text-gray-700"><%= space.name %></h3>
+                  <span class="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-600 rounded">Archived</span>
+                  <% membership = current_user.membership_in(space) %>
+                  <% if membership %>
+                    <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                      <%= membership.role.titleize %>
+                    </span>
+                  <% end %>
+                </div>
+                <% if space.description.present? %>
+                  <p class="text-gray-500 text-sm mb-3"><%= space.description %></p>
+                <% end %>
+                <div class="text-xs text-gray-400">
+                  Archived <%= time_ago_in_words(space.updated_at) %> ago
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 ml-4">
+                <% if membership&.can_manage? %>
+                  <%= link_to "Activate",
+                        activate_space_path(space),
+                        method: :patch,
+                        data: {"turbo-method": :patch},
+                        class: "px-3 py-2 text-sm font-medium text-green-600 " \
+                               "hover:bg-green-50 rounded-lg transition-colors" %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

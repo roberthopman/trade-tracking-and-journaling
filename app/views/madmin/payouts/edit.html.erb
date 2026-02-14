@@ -1,0 +1,64 @@
+<%= content_for :title, "Edit #{resource.display_name(@record)}" %>
+
+<header class="header">
+  <h1>
+    <%= link_to resource.friendly_name.pluralize, resource.index_path %>
+    /
+    <strong>Edit <%= link_to resource.display_name(@record), resource.show_path(@record) %></strong>
+  </h1>
+</header>
+
+<div class="payout-form-container">
+  <%= form_with model: [:madmin, @record],
+        url: resource.show_path(@record),
+        local: true do |form| %>
+    <% if form.object.errors.any? %>
+      <div class="alert alert-danger">
+        <div class="">
+          There was <%= pluralize form.object.errors.full_messages.count, "error" %> with your submission:
+        </div>
+
+        <ul>
+          <% form.object.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="form-group">
+      <%= form.label :account_id %>
+      <%= form.collection_select :account_id,
+            @accounts,
+            :id,
+            :to_s,
+            {prompt: "Select an account"},
+            {class: "form-control"} %>
+    </div>
+
+    <% visible_attrs = resource.attributes.values.select do |attr|
+         attr.field.present? && attr.field.visible?(action_name) && attr.name != :account
+       end %>
+
+    <% visible_attrs.each do |attribute| %>
+      <div class="form-group">
+        <%= render "madmin/shared/label", form: form, field: attribute.field %>
+        <%= render partial: attribute.field.to_partial_path("form"),
+              locals: {field: attribute.field, record: @record, form: form, resource: resource} %>
+        <% if attribute.field.options.description.present? %>
+          <%= tag.div attribute.field.options.description, class: "form-description" %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= form.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", resource.show_path(@record), class: "btn" %>
+  <% end %>
+
+  <%= button_to "Delete",
+        resource.show_path(@record),
+        method: :delete,
+        data: {turbo_confirm: "Are you sure you want to delete this payout?"},
+        class: "btn btn-danger",
+        style: "margin-top: 1rem;" %>
+</div>

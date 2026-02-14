@@ -1,0 +1,341 @@
+# frozen_string_literal: true
+
+module SpaceBackfillHelpers
+  def backfill_firms(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE firms
+      SET space_id = #{space_id}
+      WHERE id IN (SELECT DISTINCT firm_id FROM accounts WHERE user_id = #{user_id})
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_accounts(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE accounts SET space_id = #{space_id}
+      WHERE user_id = #{user_id} AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_trades(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE trades SET space_id = #{space_id}
+      WHERE account_id IN (SELECT id FROM accounts WHERE user_id = #{user_id})
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_expenses(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE expenses SET space_id = #{space_id}
+      WHERE user_id = #{user_id} AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_tags(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE tags SET space_id = #{space_id}
+      WHERE user_id = #{user_id} AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_rules(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE rules SET space_id = #{space_id}
+      WHERE id IN (
+        SELECT DISTINCT rule_id FROM firm_rules
+        WHERE firm_id IN (SELECT DISTINCT firm_id FROM accounts WHERE user_id = #{user_id})
+      )
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_account_rules(user_id, _space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE account_rules
+      SET space_id = accounts.space_id
+      FROM accounts
+      WHERE account_rules.account_id = accounts.id
+      AND accounts.user_id = #{user_id}
+      AND account_rules.space_id IS NULL
+    SQL
+  end
+
+  def backfill_account_balances(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE account_balances SET space_id = #{space_id}
+      WHERE account_id IN (SELECT id FROM accounts WHERE user_id = #{user_id})
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_firm_rules(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE firm_rules SET space_id = #{space_id}
+      WHERE firm_id IN (SELECT DISTINCT firm_id FROM accounts WHERE user_id = #{user_id})
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_rule_violations(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE rule_violations SET space_id = #{space_id}
+      WHERE account_id IN (SELECT id FROM accounts WHERE user_id = #{user_id})
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_trade_tags(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE trade_tags SET space_id = #{space_id}
+      WHERE trade_id IN (
+        SELECT id FROM trades
+        WHERE account_id IN (SELECT id FROM accounts WHERE user_id = #{user_id})
+      )
+      AND space_id IS NULL
+    SQL
+  end
+
+  def backfill_expense_tags(user_id, space_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE expense_tags SET space_id = #{space_id}
+      WHERE expense_id IN (SELECT id FROM expenses WHERE user_id = #{user_id})
+      AND space_id IS NULL
+    SQL
+  end
+
+  def fix_template_accounts
+    connection.execute(<<-SQL.squish)
+      UPDATE accounts
+      SET space_id = firms.space_id
+      FROM firms
+      WHERE accounts.firm_id = firms.id
+      AND accounts.space_id IS NULL
+      AND firms.space_id IS NOT NULL
+    SQL
+  end
+
+  def fix_account_rules_space_ids
+    connection.execute(<<-SQL.squish)
+      UPDATE account_rules
+      SET space_id = accounts.space_id
+      FROM accounts
+      WHERE account_rules.account_id = accounts.id
+      AND account_rules.space_id IS NULL
+      AND accounts.space_id IS NOT NULL
+    SQL
+  end
+
+  def fix_cross_space_references
+    say "  Fixing account_rules cross-space references..."
+    mismatched_rules = connection.select_all(<<-SQL.squish)
+      SELECT ar.id, ar.rule_id, a.space_id as account_space, r.name as rule_name, r.space_id as rule_space
+      FROM account_rules ar
+      JOIN accounts a ON ar.account_id = a.id
+      JOIN rules r ON ar.rule_id = r.id
+      WHERE a.space_id != r.space_id
+    SQL
+
+    if mismatched_rules.any?
+      say "    Found #{mismatched_rules.count} account_rules with cross-space references", true
+      fixed_count = fix_mismatched_rules(mismatched_rules)
+      say "    ✅ Fixed #{fixed_count} account_rules cross-space references", true
+    else
+      say "    ✅ No cross-space references found", true
+    end
+  end
+
+  def fix_mismatched_rules(mismatched_rules)
+    fixed_count = 0
+    mismatched_rules.each do |row|
+      correct_rule_id = find_correct_rule(row)
+      if correct_rule_id
+        update_account_rule_rule_id(row["id"], correct_rule_id)
+        say "      Fixed AR ##{row["id"]}: #{row["rule_name"]} (#{row["rule_space"]} -> #{row["account_space"]})", true
+        fixed_count += 1
+      else
+        say "      WARNING: No matching rule '#{row["rule_name"]}' found in space #{row["account_space"]}", true
+      end
+    end
+    fixed_count
+  end
+
+  def find_correct_rule(row)
+    connection.select_value(<<-SQL.squish)
+      SELECT id FROM rules
+      WHERE name = #{connection.quote(row["rule_name"])}
+      AND space_id = #{row["account_space"]}
+      LIMIT 1
+    SQL
+  end
+
+  def update_account_rule_rule_id(account_rule_id, correct_rule_id)
+    connection.execute(<<-SQL.squish)
+      UPDATE account_rules
+      SET rule_id = #{correct_rule_id}
+      WHERE id = #{account_rule_id}
+    SQL
+  end
+
+  def fix_orphaned_rules
+    orphaned_rules = connection.select_all(<<-SQL.squish)
+      SELECT r.* FROM rules r
+      LEFT JOIN firm_rules fr ON r.id = fr.rule_id
+      WHERE r.space_id IS NULL AND fr.id IS NULL
+    SQL
+
+    return unless orphaned_rules.any?
+
+    say "    Found #{orphaned_rules.count} orphaned rules, duplicating to all spaces..."
+    all_spaces = connection.select_all("SELECT id FROM spaces ORDER BY id")
+
+    all_spaces.each_with_index do |space, index|
+      orphaned_rules.each do |rule|
+        if index.zero?
+          connection.execute("UPDATE rules SET space_id = #{space["id"]} WHERE id = #{rule["id"]}")
+        else
+          duplicate_rule_to_space(rule, space["id"])
+        end
+      end
+    end
+  end
+
+  def duplicate_rule_to_space(rule, space_id)
+    connection.execute(<<-SQL.squish)
+      INSERT INTO rules (
+        name, description, rule_type, data_type, calculation_method,
+        time_scope, violation_action, validation_config, is_active,
+        sort_order, space_id, created_at, updated_at
+      )
+      SELECT
+        name, description, rule_type, data_type, calculation_method,
+        time_scope, violation_action, validation_config, is_active,
+        sort_order, #{space_id}, NOW(), NOW()
+      FROM rules WHERE id = #{rule["id"]}
+    SQL
+  end
+end
+
+class BackfillAndFinalizeSpaces < ActiveRecord::Migration[8.0]
+  include SpaceBackfillHelpers
+
+  disable_ddl_transaction!
+
+  def up
+    return unless needs_backfill?
+
+    say "Backfilling spaces for existing users..."
+    create_spaces_for_users
+    fix_orphaned_records
+    make_space_id_non_nullable
+    say "Space backfill complete!"
+  end
+
+  def down
+    connection.execute(
+      "DELETE FROM spaces WHERE settings->>'created_from_migration' = 'true'"
+    )
+  end
+
+  private
+
+  def needs_backfill?
+    %w[firms accounts trades expenses rules tags].any? do |table|
+      connection.select_value("SELECT EXISTS(SELECT 1 FROM #{table} WHERE space_id IS NULL)")
+    end
+  end
+
+  def create_spaces_for_users
+    connection.select_all("SELECT id, email, first_name, last_name, timezone FROM users").each do |user|
+      create_space_for_user(user)
+    end
+  end
+
+  def create_space_for_user(user)
+    has_space = connection.select_value(
+      "SELECT EXISTS(SELECT 1 FROM space_memberships WHERE user_id = #{user["id"]})"
+    )
+    return if has_space
+
+    space_name = "Space-#{user["id"]}"
+    space_id = connection.select_value(
+      "INSERT INTO spaces (name, description, status, settings, created_at, updated_at, uuid) " \
+      "VALUES (#{connection.quote(space_name)}, " \
+      "#{connection.quote("Personal trading workspace for #{user["email"]}")}, " \
+      "'active', " \
+      "#{connection.quote(
+        {
+          currency: "USD",
+          timezone: user["timezone"] || "UTC",
+          created_from_migration: true
+        }.to_json
+      )}, " \
+      "NOW(), NOW(), gen_random_uuid()) " \
+      "RETURNING id"
+    )
+
+    connection.execute(
+      "INSERT INTO space_memberships (user_id, space_id, role, status, created_at, updated_at) " \
+      "VALUES (#{user["id"]}, #{space_id}, 'owner', 'active', NOW(), NOW())"
+    )
+
+    backfill_user_data(user["id"], space_id)
+    say "  Created space for user #{user["email"]}", true
+  end
+
+  def backfill_user_data(user_id, space_id)
+    backfill_firms(user_id, space_id)
+    backfill_accounts(user_id, space_id)
+    backfill_trades(user_id, space_id)
+    backfill_expenses(user_id, space_id)
+    backfill_tags(user_id, space_id)
+    backfill_rules(user_id, space_id)
+    backfill_account_rules(user_id, space_id)
+    backfill_account_balances(user_id, space_id)
+    backfill_firm_rules(user_id, space_id)
+    backfill_rule_violations(user_id, space_id)
+    backfill_trade_tags(user_id, space_id)
+    backfill_expense_tags(user_id, space_id)
+  end
+
+  def fix_orphaned_records
+    say "  Checking for orphaned records..."
+    fix_template_accounts
+    fix_account_rules_space_ids
+    fix_cross_space_references
+    fix_orphaned_rules
+  end
+
+  def make_space_id_non_nullable
+    tables = %w[
+      firms
+      accounts
+      trades
+      expenses
+      rules
+      tags
+      account_rules
+      account_balances
+      firm_rules
+      rule_violations
+      trade_tags
+      expense_tags
+    ]
+
+    tables.each do |table|
+      next unless column_exists?(table.to_sym, :space_id)
+
+      null_count = connection.select_value("SELECT COUNT(*) FROM #{table} WHERE space_id IS NULL")
+      if null_count.to_i.positive?
+        say "  WARNING: #{table} has #{null_count} records with NULL space_id", true
+        next
+      end
+
+      column = connection.columns(table).find { |c| c.name == "space_id" }
+      unless column.null == false
+        change_column_null table.to_sym, :space_id, false
+        say "  Made space_id non-nullable in #{table}", true
+      end
+    end
+  end
+end

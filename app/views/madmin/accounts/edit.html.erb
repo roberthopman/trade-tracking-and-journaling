@@ -1,0 +1,172 @@
+<% content_for :title, "Edit Account" %>
+
+<div class="header">
+  <h1>Edit Account</h1>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+  <%= form_with model: @record, url: madmin_account_path(@record), method: :patch, local: true do |form| %>
+
+    <% if @record.errors.any? %>
+      <div class="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-6">
+        <h3 class="font-medium mb-2"><%= pluralize(@record.errors.count, "error") %> prohibited this account from being saved:</h3>
+        <ul class="list-disc list-inside">
+          <% @record.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 gap-6">
+      <!-- Account Size -->
+      <div class="field">
+        <%= form.label :initial_balance, "Account Size", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.number_field :initial_balance,
+              step: 0.01,
+              min: 0,
+              required: true,
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Name -->
+      <div class="field">
+        <%= form.label :name, "Name", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :name,
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Status -->
+      <div class="field">
+        <%= form.label :status, "Status", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.select :status,
+              Account::STATUSES.map { |status| [status.titleize, status] },
+              {},
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Description -->
+      <div class="field">
+        <%= form.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_area :description,
+              rows: 3,
+              placeholder: "Optional description for this account",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Account Number -->
+      <div class="field">
+        <%= form.label :external_id,
+              "Account Number",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :external_id,
+              placeholder: "Account number from your broker",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <p class="mt-1 text-sm text-gray-500">
+          Optional account number or external identifier from your broker
+        </p>
+      </div>
+
+      <!-- Connection -->
+      <div class="field">
+        <%= form.label :connection,
+              "Connection",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :connection,
+              placeholder: "e.g., TradeLocker, MT4, MT5",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Platform -->
+      <div class="field">
+        <%= form.label :platform,
+              "Platform",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :platform,
+              placeholder: "e.g., TradingView, cTrader",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Start Date -->
+      <div class="field">
+        <%= form.label :start_date,
+              "Start Date",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.date_field :start_date,
+              required: true,
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- End Date -->
+      <div class="field">
+        <%= form.label :end_date,
+              "End Date",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.date_field :end_date,
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <p class="mt-1 text-sm text-gray-500">
+          Optional - leave blank if account is still active
+        </p>
+      </div>
+
+      <!-- Currency -->
+      <div class="field">
+        <%= form.label :currency, "Currency", class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :currency,
+              maxlength: 3,
+              placeholder: "USD",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <p class="mt-1 text-sm text-gray-500">
+          3-letter currency code (e.g., USD, EUR, GBP)
+        </p>
+      </div>
+
+      <!-- Auto Liquidity Threshold -->
+      <div class="field">
+        <%= form.label :auto_liquidity_threshold,
+              "Auto Liquidity Threshold",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.number_field :auto_liquidity_threshold,
+              step: 0.01,
+              placeholder: "e.g., 98000.00",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <p class="mt-1 text-sm text-gray-500">
+          Optional - Balance level for automatic liquidation protection
+        </p>
+      </div>
+    </div>
+
+    <%= render "account_rules_fields", form: form %>
+
+    <!-- Action Buttons Container with relative positioning for alignment -->
+    <div class="relative pt-6 border-t border-gray-200 mt-6">
+      <div class="flex items-center justify-end space-x-3">
+        <%= link_to "Cancel", madmin_account_path(@record), class: "btn btn-secondary" %>
+        <%= form.submit "Update Account", class: "btn btn-primary cursor-pointer" %>
+      </div>
+    </div>
+
+  <% end %>
+
+  <!-- Delete Button (outside the form, positioned absolutely to align with other buttons) -->
+  <div class="relative -mt-[52px] mb-6">
+    <%= button_to "Delete Account",
+          madmin_account_path(@record),
+          method: :delete,
+          data: {
+            turbo_confirm: "Are you sure? This will delete the account and all associated trades."
+          },
+          class: "btn btn-danger cursor-pointer" %>
+  </div>
+</div>

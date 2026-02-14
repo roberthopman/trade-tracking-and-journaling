@@ -1,0 +1,120 @@
+<% content_for :title, "New Account" %>
+
+<div class="header">
+  <h1>New Account</h1>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6">
+  <%= form_with model: @record, url: madmin_accounts_path, local: true do |form| %>
+
+    <% if @record.errors.any? %>
+      <div class="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-6">
+        <h3 class="font-medium mb-2"><%= pluralize(@record.errors.count, "error") %> prohibited this account from being saved:</h3>
+        <ul class="list-disc list-inside">
+          <% @record.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 gap-6">
+      <!-- Template Selection -->
+      <div class="field">
+        <div class="flex items-center justify-between mb-1">
+          <%= form.label :template_id, "Type", class: "block text-sm font-medium text-gray-700" %>
+          <%= link_to "Manage Account Types",
+                madmin_firms_path,
+                class: "text-sm text-blue-600 hover:text-blue-800",
+                title: "Go to Firms to manage account types" %>
+        </div>
+        <%= form.collection_select :template_id,
+              Account.templates.order(:firm_id, :initial_balance, :phase),
+              :id,
+              lambda { |t|
+                parts = [t.firm.name, number_with_delimiter(t.initial_balance.to_i, delimiter: ",")]
+                parts << t.name if t.name.present?
+                parts << t.phase_display_name if t.phase.present?
+                parts.join(" - ")
+              },
+              {prompt: "Select a type"},
+              {
+                required: true,
+                class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                       "focus:outline-none focus:ring-2 focus:ring-blue-500"
+              } %>
+        <p class="mt-1 text-sm text-gray-500">The type determines the balance, and rules</p>
+      </div>
+
+      <!-- Account Number -->
+      <div class="field">
+        <%= form.label :external_id,
+              "Account Number",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :external_id,
+              placeholder: "e.g., 12345678",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <p class="mt-1 text-sm text-gray-500">
+          Required - Account number from your broker
+        </p>
+      </div>
+
+      <!-- Connection -->
+      <div class="field">
+        <%= form.label :connection,
+              "Connection",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :connection,
+              placeholder: "e.g., TradeLocker, MT4, MT5",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Platform -->
+      <div class="field">
+        <%= form.label :platform,
+              "Platform",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.text_field :platform,
+              placeholder: "e.g., TradingView, cTrader",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Start Date -->
+      <div class="field">
+        <%= form.label :start_date,
+              "Start Date",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.date_field :start_date,
+              value: Date.current,
+              required: true,
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Auto Liquidity Threshold -->
+      <div class="field">
+        <%= form.label :auto_liquidity_threshold,
+              "Auto Liquidity Threshold",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= form.number_field :auto_liquidity_threshold,
+              step: 0.01,
+              placeholder: "e.g., 98000.00",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <p class="mt-1 text-sm text-gray-500">
+          Optional - Balance level for automatic liquidation protection
+        </p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+      <%= link_to "Cancel", madmin_accounts_path, class: "btn btn-secondary" %>
+      <%= form.submit "Create Account", class: "btn btn-primary" %>
+    </div>
+
+  <% end %>
+</div>

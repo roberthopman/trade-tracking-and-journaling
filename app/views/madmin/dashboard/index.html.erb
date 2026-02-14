@@ -1,0 +1,313 @@
+<% content_for :title, "Trading Journal" %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-bold text-gray-900">Trading Journal</h1>
+
+    <% if @accounts.any? %>
+      <div class="flex items-center gap-4">
+        <%= form_with url: madmin_dashboard_path,
+              method: :get,
+              data: {turbo_frame: "dashboard_content"},
+              class: "flex items-center gap-2" do %>
+          <%= select_tag :account_id,
+                options_for_select(
+                  [["All Accounts", "all"]] + @accounts.map { |a| [a.to_s, a.id] },
+                  @selected_account ? @selected_account.id : "all"
+                ),
+                onchange: "this.form.submit()",
+                class: "px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @all_accounts %>
+    <p class="mt-2 text-sm text-gray-600">
+      All Accounts (<%= @accounts.count %> accounts)
+    </p>
+  <% elsif @selected_account %>
+    <p class="mt-2 text-sm text-gray-600">
+      <%= @selected_account.firm.name %> • <%= @selected_account.phase.humanize %>
+    </p>
+  <% end %>
+</div>
+
+<%= turbo_frame_tag "dashboard_content" do %>
+  <% if @accounts.empty? %>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl">
+      <h3 class="text-lg font-semibold text-blue-900 mb-3">Welcome! Get started:</h3>
+      <ol class="space-y-2 text-blue-900">
+        <li>1. <%= link_to "Select or create a firm",
+                     madmin_firms_path,
+                     data: {turbo_frame: "_top"},
+                     class: "text-blue-600 hover:text-blue-800 font-medium underline" %></li>
+        <li>2. Review the firm's account types and rules</li>
+        <li>3. <%= link_to "Create your first account",
+                     new_madmin_account_path,
+                     data: {turbo_frame: "_top"},
+                     class: "text-blue-600 hover:text-blue-800 font-medium underline" %></li>
+        <li>4. <%= link_to "Add your first trade",
+                     new_madmin_trade_path,
+                     data: {turbo_frame: "_top"},
+                     class: "text-blue-600 hover:text-blue-800 font-medium underline" %></li>
+      </ol>
+    </div>
+  <% else %>
+    <!-- KPI Stats -->
+  <div class="bg-white rounded-lg shadow mb-8">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 divide-x divide-y md:divide-y-0">
+      <!-- Total P&L -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Total P&L</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_to_currency(@total_pnl, precision: 2) %>
+        </p>
+      </div>
+
+      <!-- Total Payouts -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Total Payouts</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_to_currency(@total_payouts, precision: 2) %>
+        </p>
+      </div>
+
+      <!-- Win Rate -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Win Rate</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_with_precision(@win_rate, precision: 2) %>%
+        </p>
+        <p class="text-xs text-gray-500 mt-1 ">
+          <%= @win_count %>W / <%= @loss_count %>L
+        </p>
+      </div>
+
+      <!-- Avg Win -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Avg Win</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_with_precision(@avg_win, delimiter: ",", precision: 2) %>
+        </p>
+      </div>
+
+      <!-- Avg Loss -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Avg Loss</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_with_precision(@avg_loss, delimiter: ",", precision: 2) %>
+        </p>
+      </div>
+
+      <!-- Best Win -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Best Win</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_with_precision(@best_win, delimiter: ",", precision: 2) %>
+        </p>
+      </div>
+
+      <!-- Worst Loss -->
+      <div class="p-4">
+        <h3 class="text-xs font-medium text-gray-600 mb-1">Worst Loss</h3>
+        <p class="text-xl font-semibold text-gray-900">
+          <%= number_with_precision(@worst_loss, delimiter: ",", precision: 2) %>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar View -->
+  <div class="bg-white rounded-lg shadow mb-4 max-w-2xl md:max-w-none">
+    <div class="px-2 py-1.5 border-b border-gray-200">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-gray-900">
+            <%= @selected_month.strftime("%B %Y") %>
+          </h2>
+          <div class="text-xs
+            <%= @monthly_pnl >= 0 ? "text-green-600" : "text-red-600" %>">
+            <strong><%= number_to_currency(@monthly_pnl, precision: 2) %></strong>
+          </div>
+        </div>
+        <div class="flex gap-0.5">
+          <%= link_to "←",
+                madmin_dashboard_path(
+                  account_id: @all_accounts ? "all" : @selected_account&.id,
+                  month: @selected_month.prev_month.strftime("%Y-%m")
+                ),
+                data: {turbo_frame: "dashboard_content"},
+                class: "btn btn-secondary text-xs px-1.5 py-0.5" %>
+          <%= link_to "Today",
+                madmin_dashboard_path(account_id: @all_accounts ? "all" : @selected_account&.id),
+                data: {turbo_frame: "dashboard_content"},
+                class: "btn btn-secondary text-xs px-1.5 py-0.5" %>
+          <%= link_to "→",
+                madmin_dashboard_path(
+                  account_id: @all_accounts ? "all" : @selected_account&.id,
+                  month: @selected_month.next_month.strftime("%Y-%m")
+                ),
+                data: {turbo_frame: "dashboard_content"},
+                class: "btn btn-secondary text-xs px-1.5 py-0.5" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-2 py-1.5">
+      <!-- Calendar with weekly P&L -->
+      <% current_week_start = @calendar_start %>
+      <% while current_week_start <= @calendar_end %>
+        <% week_end = [current_week_start.end_of_week(:monday), @calendar_end].min %>
+        <% week_pnl = @weekly_pnl[current_week_start] || 0 %>
+
+        <% if current_week_start == @calendar_start %>
+          <!-- Day headers row -->
+          <div class="flex mb-0.5">
+            <div class="flex-1 grid grid-cols-7 gap-0.5">
+              <% %w[M T W T F S S].each do |day| %>
+                <div class="text-center text-xs font-medium text-gray-600 pb-0.5">
+                  <%= day %>
+                </div>
+              <% end %>
+            </div>
+            <div class="flex-shrink-0 pl-0.5 min-w-[5rem]">
+              <div class="text-center text-xs font-medium text-gray-600 pb-0.5">
+                W
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="flex mb-0.5">
+          <!-- Calendar days for this week -->
+          <div class="flex-1 grid grid-cols-7 gap-0.5">
+            <!-- Calendar days for this week -->
+            <% (current_week_start..week_end).each do |date| %>
+              <% in_current_month = date.month == @selected_month.month %>
+              <% pnl = @trades_by_date[date] || 0 %>
+              <% trade_count = @trade_counts_by_date[date] || 0 %>
+              <% has_trades = trade_count > 0 %>
+
+              <div class="h-24 p-0.5 border rounded cursor-pointer transition-all duration-200
+                <%= in_current_month ? "bg-white" : "bg-gray-50" %>
+                <%= if has_trades
+                      if pnl > 0
+                        "border-green-500 bg-green-50 hover:bg-green-100 " \
+                          "hover:border-green-600"
+                      else
+                        "border-red-500 bg-red-50 " \
+                          "hover:bg-red-100 hover:border-red-600"
+                      end
+                    else
+                      "border-gray-200 hover:bg-gray-100"
+                    end %>"
+                data-url="<%= madmin_trades_path(
+                                start_date: date.strftime("%Y-%m-%d"),
+                                end_date: date.strftime("%Y-%m-%d"),
+                                account_id: @all_accounts ? nil : @selected_account&.id
+                              ) %>"
+                onclick="window.location.href=this.dataset.url"
+                title="<%= if has_trades
+                             "View #{pluralize(
+                               trade_count,
+                               "trade"
+                             )} for #{date.strftime("%B %d, %Y")}"
+                           else
+                             "View #{date.strftime("%B %d, %Y")}"
+                           end %>">
+                <div class="text-xs leading-tight
+                  <%= in_current_month ? "text-gray-900 font-medium" : "text-gray-400" %>">
+                  <%= date.day %>
+                </div>
+                <% if has_trades %>
+                  <div class="text-xs font-semibold leading-tight
+                    <%= pnl > 0 ? "text-green-700" : "text-red-700" %>">
+                    <%= number_to_currency(pnl, precision: 2) %>
+                  </div>
+                  <div class="text-xs text-gray-600 leading-tight">
+                    <%= trade_count %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Weekly P&L column (right side) -->
+          <div class="flex-shrink-0 pl-0.5">
+            <div class="h-24 p-0.5 border border-gray-200 rounded bg-gray-50 flex flex-col items-center justify-center min-w-[5rem]">
+              <div class="text-xs font-medium text-gray-600 mb-0.5">
+                <%= current_week_start.strftime("%V") %>
+              </div>
+              <div class="text-xs font-semibold
+                <%= week_pnl >= 0 ? "text-green-600" : "text-red-600" %>">
+                <%= number_to_currency(week_pnl, precision: 2) %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% current_week_start = current_week_start.next_week(:monday) %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Recent Trades List -->
+  <div class="bg-white rounded-lg shadow">
+    <div class="p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Recent Trades</h2>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Date</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Account</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Symbol</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Type</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase">P&L</th>
+            <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% if @trades.any? %>
+            <% @trades.limit(20).each do |trade| %>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= trade.trade_date.strftime("%b %d, %Y") %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= trade.account.to_s %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 ">
+                  <%= trade.symbol %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <%= Trade::TRADE_TYPES[trade.trade_type] || trade.trade_type %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold
+                  <%= trade.pnl >= 0 ? "text-green-600" : "text-red-600" %>">
+                  <%= number_to_currency(trade.pnl, precision: 2) %>
+                </td>
+                <td class="px-3 py-2 text-center">
+                  <%= link_to "View",
+                        madmin_trade_path(trade),
+                        class: "text-blue-600 hover:text-blue-800 text-xs",
+                        data: {turbo_frame: "_top"} %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                No trades yet. Start adding trades to see your performance!
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% end %>
+<% end %>

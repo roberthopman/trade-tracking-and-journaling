@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <meta charset="utf-8">
+    <meta name="ROBOTS" content="NOODP">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+      <% if content_for? :title %>
+        <%= yield(:title) %> -
+      <% end %>
+      <%= Madmin.site_name %> Admin
+    </title>
+    <%= csrf_meta_tags %>
+    <%= render "madmin/application/javascript" %>
+  </head>
+  <body class="<%= controller_name %> <%= action_name %>" data-controller="mobile-menu">
+    <%= render "madmin/application/header" %>
+    <header>
+      <%= render "shared/flash_messages" %>
+    </header>
+
+    <main>
+      <aside id="sidebar" data-mobile-menu-target="menu">
+        <%= render "madmin/application/sidebar" %>
+      </aside>
+
+      <div>
+        <%= yield %>
+      </div>
+    </main>
+
+    <div data-mobile-menu-target="overlay" data-action="click->mobile-menu#close" class="mobile-nav-overlay"></div>
+  </body>
+</html>

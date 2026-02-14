@@ -1,0 +1,159 @@
+<% content_for :title, "Expenses" %>
+
+<div class="mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-gray-900">Expenses</h1>
+    <div class="flex gap-2">
+      <%= link_to "New Expense", new_madmin_expense_path, class: "btn btn-primary" %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white rounded-lg shadow p-4 mb-4">
+    <%= form_with url: madmin_expenses_path,
+          method: :get,
+          local: true,
+          class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" do |f| %>
+      <div>
+        <%= label_tag :recurrence_type,
+              "Recurrence",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :recurrence_type,
+              options_for_select(
+                Expense::RECURRENCE_TYPES.map { |type| [type.titleize, type] },
+                params[:recurrence_type]
+              ),
+              prompt: "All Types",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <div>
+        <%= label_tag :start_date,
+              "Starting at:",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= date_field_tag :start_date,
+              params[:start_date],
+              autocomplete: "off",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <div>
+        <%= label_tag :end_date,
+              "Ending at:",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= date_field_tag :end_date,
+              params[:end_date],
+              autocomplete: "off",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <div>
+        <%= label_tag :tag_id,
+              "Tag",
+              class: "block text-sm font-medium text-gray-700 mb-1" %>
+        <%= select_tag :tag_id,
+              options_from_collection_for_select(
+                current_user.tags.joins(:expenses).distinct.order(:name), :id, :name, params[:tag_id]
+              ),
+              prompt: "All Tags",
+              class: "w-full px-3 py-2 border border-gray-300 rounded-md " \
+                     "focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+      </div>
+
+      <div class="flex items-end gap-2">
+        <%= submit_tag "Filter", class: "btn btn-primary" %>
+        <%= link_to "Clear", madmin_expenses_path, class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Expenses Table -->
+<div class="bg-white rounded-lg shadow overflow-hidden">
+  <table class="w-full">
+    <thead class="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Expense Date</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Next Date</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Title</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Recurrence</th>
+        <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Tags</th>
+        <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase">Amount</th>
+        <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-200">
+      <% if @records.any? %>
+        <% @records.each do |expense| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <%= expense.expense_date.strftime("%b %d, %Y") %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <% if expense.recurring? && expense.next_expense_date %>
+                <%= expense.next_expense_date.strftime("%b %d, %Y") %>
+              <% else %>
+                <span class="text-gray-400">-</span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-900">
+              <%= link_to expense.title,
+                    madmin_expense_path(expense),
+                    class: "text-blue-600 hover:text-blue-800 font-medium" %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                <%= expense.recurring? ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800" %>">
+                <%= expense.recurrence_type.titleize %>
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-900">
+              <div class="flex flex-wrap gap-1">
+                <% expense.tags.each do |tag| %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs
+                    font-medium"
+                    style="background-color: <%= tag.color %>20; color: <%= tag.color %>;">
+                    <%= tag.name %>
+                  </span>
+                <% end %>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+              <%= number_to_currency(expense.amount) %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+              <%= link_to "View",
+                    madmin_expense_path(expense),
+                    class: "text-blue-600 hover:text-blue-800 mr-3" %>
+              <%= link_to "Edit",
+                    edit_madmin_expense_path(expense),
+                    class: "text-blue-600 hover:text-blue-800 mr-3" %>
+              <%= link_to "Delete",
+                    madmin_expense_path(expense),
+                    data: {
+                      turbo_confirm: "Are you sure you want to delete this expense?",
+                      turbo_method: :delete
+                    },
+                    class: "text-red-600 hover:text-red-800 font-medium" %>
+            </td>
+          </tr>
+        <% end %>
+      <% else %>
+        <tr>
+          <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+            No expenses found matching your filters.
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <% if @pagy.pages > 1 %>
+    <div class="px-6 py-4 border-t border-gray-200">
+      <%== pagy_nav(@pagy) %>
+    </div>
+  <% end %>
+</div>

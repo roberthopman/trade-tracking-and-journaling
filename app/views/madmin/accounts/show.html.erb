@@ -1,0 +1,815 @@
+<%= content_for :title, @record.to_s %>
+
+<header class="header">
+  <h1>
+    <%= link_to "Accounts", madmin_accounts_path %>
+    /
+    <%= @record.to_s %>
+  </h1>
+
+  <div class="actions">
+    <%= link_to "New Trade", new_madmin_trade_path(account_id: @record.id), class: "btn btn-primary" %>
+    <%= link_to "Edit", edit_madmin_account_path(@record), class: "btn btn-secondary" %>
+    <%= button_to "Delete",
+          madmin_account_path(@record),
+          method: :delete,
+          data: {turbo_confirm: "Are you sure?"},
+          class: "btn btn-danger" %>
+  </div>
+</header>
+
+<!-- Account Overview Section -->
+<div class="bg-white rounded-lg shadow mb-4">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Account Overview</h2>
+  </div>
+  <div class="px-6 py-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Firm</div>
+        <div class="text-sm font-medium text-gray-900 mt-1"><%= @record.firm.name %></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Name</div>
+        <div class="text-sm font-medium text-gray-900 mt-1"><%= @record.name %></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Account Number</div>
+        <div class="text-sm font-medium text-gray-900 mt-1"><%= @record.external_id %></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Phase</div>
+        <div class="mt-1">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            <%= @record.phase == "evaluation" ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800" %>">
+            <%= @record.phase_display_name %>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Connection</div>
+        <div class="text-sm font-medium text-gray-900 mt-1">
+          <%= @record.connection.presence || "—" %>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Platform</div>
+        <div class="text-sm font-medium text-gray-900 mt-1">
+          <%= @record.platform.presence || "—" %>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Status</div>
+        <div class="mt-1">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+            <%= case @record.status
+                when "active" then "bg-green-100 text-green-800"
+                when "suspended" then "bg-yellow-100 text-yellow-800"
+                when "terminated" then "bg-red-100 text-red-800"
+                when "completed" then "bg-blue-100 text-blue-800"
+                else "bg-gray-100 text-gray-800"
+                end %>">
+            <%= @record.status.titleize %>
+          </span>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Currency</div>
+        <div class="text-sm font-medium text-gray-900 mt-1"><%= @record.currency %></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Financial & Performance Section -->
+<div class="grid grid-cols-2 gap-4 mb-4">
+  <!-- Financial Stats -->
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-3 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Financial Stats</h3>
+    </div>
+    <div class="px-6 py-4">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Account Size</div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <%= number_to_currency(@record.initial_balance, precision: 2) %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Balance</div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <%= number_to_currency(@record.current_balance, precision: 2) %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">P&L</div>
+          <div class="text-lg font-semibold mt-1
+            <%= @record.profit_loss >= 0 ? "text-green-600" : "text-red-600" %>">
+            <%= number_to_currency(@record.profit_loss, precision: 2) %>
+            <div class="text-xs"><%= number_to_percentage(@record.profit_loss_percentage, precision: 2) %></div>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Auto Liq. Threshold</div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <% if @record.auto_liquidity_threshold %>
+              <%= number_to_currency(@record.auto_liquidity_threshold, precision: 2) %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Available Drawdown</div>
+          <div class="text-lg font-semibold mt-1
+            <%= if @record.available_drawdown
+                  @record.available_drawdown >= 0 ? "text-green-600" : "text-red-600"
+                else
+                  "text-gray-900"
+                end %>">
+            <% if @record.available_drawdown %>
+              <%= number_to_currency(@record.available_drawdown, precision: 2) %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profit Target Row -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4 border-t border-gray-100">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">
+            Profit Target
+            <span class="relative group inline-block ml-1 cursor-help">
+              <span class="text-blue-500">ⓘ</span>
+              <span class="absolute bottom-full left-0 mb-2
+                px-3 py-2 text-xs text-gray-900 bg-white rounded shadow-lg border border-gray-200
+                opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                w-64 text-left tooltip">
+                <strong>Profit Target:</strong> Uses "Profit Target ($)" rule if set, otherwise calculates as Initial Balance × (Profit Target % / 100)
+              </span>
+            </span>
+          </div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <% if @record.profit_target %>
+              <%= number_to_currency(@record.profit_target, precision: 2) %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Needed to Target</div>
+          <div class="text-lg font-semibold mt-1
+            <%= if @record.profit_target && @record.profit_loss
+                  remaining = @record.profit_target - @record.profit_loss
+                  remaining > 0 ? "text-amber-600" : "text-green-600"
+                else
+                  "text-gray-900"
+                end %>">
+            <% if @record.profit_target && @record.profit_loss %>
+              <% remaining = @record.profit_target - @record.profit_loss %>
+              <% if remaining > 0 %>
+                <%= number_to_currency(remaining, precision: 2) %>
+              <% else %>
+                <span class="text-green-600">✓ Met</span>
+              <% end %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+
+      <!-- Second Row -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4 border-t border-gray-100">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Biggest Day</div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <%= number_to_currency(@record.biggest_day, precision: 2) %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Consistency Rule</div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <% if @record.consistency_rule_value %>
+              <%= number_to_percentage(@record.consistency_rule_value, precision: 0) %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">
+            Consistency Target
+            <span class="relative group inline-block ml-1 cursor-help">
+              <span class="text-blue-500">ⓘ</span>
+              <span class="absolute bottom-full left-0 mb-2
+                px-3 py-2 text-xs text-gray-900 bg-white rounded shadow-lg border border-gray-200
+                opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                w-64 text-left tooltip">
+                <strong>Formula:</strong> Biggest Day / (Consistency Rule / 100)
+              </span>
+            </span>
+          </div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <% if @record.consistency_target %>
+              <%= number_to_currency(@record.consistency_target, precision: 2) %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Remaining to Target</div>
+          <div class="text-lg font-semibold mt-1
+            <%= if @record.remaining_to_target
+                  @record.remaining_to_target > 0 ? "text-amber-600" : "text-green-600"
+                else
+                  "text-gray-900"
+                end %>">
+            <% if @record.remaining_to_target %>
+              <%= number_to_currency(@record.remaining_to_target, precision: 2) %>
+            <% else %>
+              —
+            <% end %>
+          </div>
+        </div>
+        <div></div>
+      </div>
+
+      <!-- Third Row - Safety Net & Day Performance -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4 border-t border-gray-100">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">
+            Safety Net ($)
+            <span class="relative group inline-block ml-1 cursor-help">
+              <span class="text-blue-500">ⓘ</span>
+              <span class="absolute bottom-full left-0 mb-2
+                px-3 py-2 text-xs text-gray-900 bg-white rounded shadow-lg border border-gray-200
+                opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                w-64 text-left tooltip">
+                <strong>Safety Net:</strong> Minimum profit buffer required for this account. Configure this rule in the account settings.
+              </span>
+            </span>
+          </div>
+          <div class="text-lg font-semibold text-gray-900 mt-1">
+            <% if @record.safety_net_amount %>
+              <%= number_to_currency(@record.safety_net_amount, precision: 2) %>
+            <% else %>
+              <span class="text-gray-400">Not set</span>
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">
+            Amount Needed to Safety Net
+            <span class="relative group inline-block ml-1 cursor-help">
+              <span class="text-blue-500">ⓘ</span>
+              <span class="absolute bottom-full left-0 mb-2
+                px-3 py-2 text-xs text-gray-900 bg-white rounded shadow-lg border border-gray-200
+                opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                w-64 text-left tooltip">
+                <strong>Amount Needed:</strong> How much more profit is required to reach the Safety Net target
+              </span>
+            </span>
+          </div>
+          <div class="text-lg font-semibold mt-1
+            <%= if @record.safety_net_amount &&
+                    @record.amount_needed_to_safety_net &&
+                    @record.amount_needed_to_safety_net > 0
+                  "text-amber-600"
+                elsif @record.safety_net_amount
+                  "text-green-600"
+                else
+                  "text-gray-900"
+                end %>">
+            <% if @record.safety_net_amount %>
+              <% if @record.amount_needed_to_safety_net > 0 %>
+                <%= number_to_currency(@record.amount_needed_to_safety_net, precision: 2) %>
+              <% else %>
+                <span class="text-green-600">✓ Met</span>
+              <% end %>
+            <% else %>
+              <span class="text-gray-400">—</span>
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">
+            Amount Over Safety Net
+            <span class="relative group inline-block ml-1 cursor-help">
+              <span class="text-blue-500">ⓘ</span>
+              <span class="absolute bottom-full left-0 mb-2
+                px-3 py-2 text-xs text-gray-900 bg-white rounded shadow-lg border border-gray-200
+                opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                w-64 text-left tooltip">
+                <strong>Amount Over:</strong> How much profit exceeds the Safety Net requirement
+              </span>
+            </span>
+          </div>
+          <div class="text-lg font-semibold mt-1
+            <%= if @record.safety_net_amount && @record.amount_over_safety_net && @record.amount_over_safety_net > 0
+                  "text-green-600"
+                else
+                  "text-gray-900"
+                end %>">
+            <% if @record.safety_net_amount %>
+              <%= number_to_currency(@record.amount_over_safety_net, precision: 2) %>
+            <% else %>
+              <span class="text-gray-400">—</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Stats -->
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-3 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Activity Stats</h3>
+    </div>
+    <div class="px-6 py-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Created</div>
+          <div class="text-sm font-medium text-gray-900 mt-1">
+            <%= @record.created_at.strftime("%b %d, %Y") %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Funded</div>
+          <div class="text-sm font-medium text-gray-900 mt-1">
+            <%= @record.start_date&.strftime("%b %d, %Y") %>
+            <div class="text-xs text-gray-500">
+              <% if @record.start_date %>
+                <%= (Date.current - @record.start_date).to_i %>d open
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">First Trade</div>
+          <div class="text-sm font-medium text-gray-900 mt-1">
+            <% first_trade_date = @record.trades.minimum(:trade_date) %>
+            <% if first_trade_date %>
+              <%= first_trade_date.strftime("%b %d, %Y") %>
+            <% else %>
+              <span class="text-gray-400">None</span>
+            <% end %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Total Trades</div>
+          <div class="text-sm font-medium text-gray-900 mt-1">
+            <%= @record.trades.count %>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-wide">Win Rate</div>
+          <div class="text-sm font-medium text-gray-900 mt-1">
+            <% if @record.trades.count > 0 %>
+              <% win_rate = (@record.winning_trades_count.to_f / @record.trades.count * 100).round(1) %>
+              <span class="<%= win_rate >= 50 ? "text-green-600" : "text-red-600" %>">
+                <%= number_to_percentage(win_rate, precision: 1) %>
+              </span>
+            <% else %>
+              <span class="text-gray-400">—</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Payouts Section -->
+<div class="bg-white rounded-lg shadow mb-4">
+  <div class="px-6 py-3 border-b border-gray-200 flex justify-between items-center">
+    <h3 class="text-sm font-semibold text-gray-900">Payouts</h3>
+    <%= link_to "New Payout", new_madmin_payout_path(account_id: @record.id), class: "btn btn-primary btn-sm" %>
+  </div>
+
+  <% payouts = @record.payouts.recent %>
+  <% if payouts.any? %>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Payout #
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Requested Date
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Amount Requested
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Amount Paid
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Received Date
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% payouts.each do |payout| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                #<%= payout.payout_number %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= payout.requested_date.strftime("%b %d, %Y") %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                <%= number_to_currency(payout.amount_requested, precision: 2) %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                  <%= case payout.request_status
+                      when "approved" then "bg-green-100 text-green-800"
+                      when "declined" then "bg-red-100 text-red-800"
+                      when "pending" then "bg-yellow-100 text-yellow-800"
+                      else "bg-gray-100 text-gray-800"
+                      end %>">
+                  <%= payout.request_status.titleize %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <% if payout.amount_paid.present? %>
+                  <span class="font-semibold text-green-600">
+                    <%= number_to_currency(payout.amount_paid, precision: 2) %>
+                  </span>
+                <% else %>
+                  <span class="text-gray-400">—</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <% if payout.received_date.present? %>
+                  <%= payout.received_date.strftime("%b %d, %Y") %>
+                  <% if payout.days_to_receive %>
+                    <div class="text-xs text-gray-500">
+                      (<%= payout.days_to_receive %> days)
+                    </div>
+                  <% end %>
+                <% else %>
+                  <span class="text-gray-400">—</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= link_to "View", madmin_payout_path(payout), class: "text-blue-600 hover:text-blue-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="px-6 py-8 text-center text-gray-500">
+      <p class="mb-4">No payouts have been requested for this account yet.</p>
+      <%= link_to "Request First Payout", new_madmin_payout_path(account_id: @record.id), class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</div>
+
+<!-- Trading Days Breakdown Section -->
+<% if @record.total_trading_days > 0 && (@record.required_trading_days > 0 || @record.min_trading_day_amount_threshold > 0) %>
+  <div class="grid grid-cols-2 gap-4 mb-4">
+    <!-- Trading Days Analysis Card -->
+    <div class="bg-white rounded-lg shadow">
+      <div class="px-6 py-3 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-900">Trading Days Analysis</h3>
+      </div>
+      <div class="px-6 py-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div class="text-xs text-gray-500 uppercase tracking-wide">Total Trading Days</div>
+            <div class="text-lg font-semibold text-gray-900 mt-1">
+              <%= @record.total_trading_days %>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Any day with trades</div>
+          </div>
+
+          <% if @record.min_trading_day_amount_threshold > 0 %>
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wide">Qualified Days</div>
+              <div class="text-lg font-semibold text-green-600 mt-1">
+                <%= @record.qualified_trading_days %>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                Met $<%= number_with_precision(@record.min_trading_day_amount_threshold, precision: 0) %> minimum
+              </div>
+            </div>
+
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wide">Non-Qualified Days</div>
+              <div class="text-lg font-semibold text-amber-600 mt-1">
+                <%= @record.non_qualified_trading_days %>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">
+                Below $<%= number_with_precision(@record.min_trading_day_amount_threshold, precision: 0) %> minimum
+              </div>
+            </div>
+          <% end %>
+
+          <% if @record.required_trading_days > 0 %>
+            <div>
+              <div class="text-xs text-gray-500 uppercase tracking-wide">Required Days</div>
+              <div class="text-lg font-semibold mt-1
+                <%= @record.qualified_trading_days >= @record.required_trading_days ? "text-green-600" : "text-gray-900" %>">
+                <%= @record.required_trading_days %>
+              </div>
+              <div class="text-xs mt-1
+                <%= @record.qualified_trading_days >= @record.required_trading_days ? "text-green-600" : "text-gray-500" %>">
+                <% if @record.qualified_trading_days >= @record.required_trading_days %>
+                  ✓ Requirement met
+                <% else %>
+                  <%= @record.required_trading_days - @record.qualified_trading_days %> more needed
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <% if @record.min_trading_day_amount_threshold.present? && @record.required_trading_days.present? && @record.required_trading_days > 0 %>
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-gray-700">
+                <strong>Progress:</strong>
+                <%= @record.qualified_trading_days %> / <%= @record.required_trading_days %> qualified trading days
+              </div>
+              <div class="flex-1 mx-4">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <% actual_progress_percent = @record.qualified_trading_days.to_f / @record.required_trading_days * 100 %>
+                  <% display_progress_percent = [actual_progress_percent, 100].min %>
+                  <div class="h-2 rounded-full <%= actual_progress_percent >= 100 ? "bg-green-600" : "bg-blue-600" %>"
+                       style="width: <%= display_progress_percent %>%"></div>
+                </div>
+              </div>
+              <div class="text-sm font-semibold <%= actual_progress_percent >= 100 ? "text-green-600" : "text-gray-900" %>">
+                <%= number_to_percentage(display_progress_percent, precision: 0) %>
+              </div>
+            </div>
+            <div class="mt-2 text-xs text-gray-500 space-y-2">
+              <div class="border-t border-gray-200 pt-2">
+                <div><strong>How It Works:</strong></div>
+                <% progress_raw = @record.qualified_trading_days.to_f / @record.required_trading_days * 100
+                   current_progress = [progress_raw, 100].min %>
+                <div class="ml-2 mt-1">
+                  <% if @record.min_trading_day_amount_threshold > 0 %>
+                    You need <strong><%= @record.required_trading_days %></strong> days where you make or lose at least
+                    <strong><%= number_to_currency(@record.min_trading_day_amount_threshold, precision: 0) %></strong>.
+                  <% else %>
+                    You need <strong><%= @record.required_trading_days %></strong> days with any trades (no minimum amount required).
+                  <% end %>
+                </div>
+                <div class="ml-2 mt-1">
+                  So far you have <strong><%= @record.qualified_trading_days %></strong> qualifying days =
+                  <strong><%= number_to_percentage(current_progress, precision: 0) %></strong> complete.
+                </div>
+              </div>
+
+              <div class="border-t border-gray-200 pt-2">
+                <div><strong>Account Rules Used:</strong></div>
+                <div class="ml-2 mt-1">
+                  • <strong>Min Trading Day Amount:</strong>
+                  <%= number_to_currency(@record.min_trading_day_amount_threshold, precision: 0) %>
+                </div>
+                <div class="ml-2">
+                  • <strong>Min Trading Days:</strong> <%= @record.required_trading_days %> days
+                </div>
+              </div>
+            </div>
+          </div>
+        <% else %>
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-gray-700">
+                <strong>Progress:</strong>
+                No progress tracking available
+              </div>
+              <div class="flex-1 mx-4">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="h-2 rounded-full bg-gray-300" style="width: 0%"></div>
+                </div>
+              </div>
+              <div class="text-sm font-semibold text-gray-400">
+                —
+              </div>
+            </div>
+            <div class="mt-2 text-xs text-amber-600">
+              <strong>⚠ Setup Required:</strong> To track your progress, configure both the
+              <strong>"Min Trading Day Amount ($)"</strong> rule (minimum P&L threshold per day) and
+              <strong>"Min Trading Days"</strong> rule (number of qualified days required).
+              Add these rules in the account settings to see your progress.
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Daily Trading Volumes Card -->
+    <% if @record.daily_trading_volumes.any? %>
+      <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-3 border-b border-gray-200">
+          <h3 class="text-sm font-semibold text-gray-900">
+            Daily trades (PnL)
+            <% if @record.min_trading_day_amount_threshold > 0 %>
+              <span class="text-xs text-gray-500 normal-case font-normal ml-2">
+                Threshold: <%= number_to_currency(@record.min_trading_day_amount_threshold, precision: 0) %>
+              </span>
+            <% end %>
+          </h3>
+        </div>
+        <div class="px-6 py-4">
+          <div class="overflow-hidden rounded-lg border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Volume
+                  </th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Trades
+                  </th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <% @record.daily_trading_volumes.first(30).each do |day| %>
+                  <tr class="<%= if day[:volume] < 0
+                                   "bg-red-50"
+                                 elsif day[:qualified]
+                                   "bg-green-50"
+                                 else
+                                   "bg-white"
+                                 end %>">
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                      <%= day[:date].strftime("%b %d, %Y") %>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium
+                      <%= if day[:volume] < 0
+                            "text-red-600"
+                          elsif day[:qualified]
+                            "text-green-700"
+                          else
+                            "text-gray-900"
+                          end %>">
+                      <%= number_to_currency(day[:volume], precision: 2) %>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                      <%= day[:trade_count] %> <%= "trade".pluralize(day[:trade_count]) %>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm">
+                      <% if day[:qualified] %>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          ✓ Qualified
+                        </span>
+                      <% else %>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                          Below threshold
+                        </span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <% if @record.daily_trading_volumes.size > 30 %>
+            <p class="mt-2 text-xs text-gray-500">
+              Showing 30 of <%= @record.daily_trading_volumes.size %> trading days
+            </p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @record.description.present? %>
+  <div class="bg-white rounded-lg shadow mb-4 px-6 py-3">
+    <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Description</div>
+    <div class="text-sm text-gray-900"><%= @record.description %></div>
+  </div>
+<% end %>
+
+<!-- Rules Section -->
+<% if @record.account_rules.any? %>
+  <div class="bg-white rounded-lg shadow mb-4">
+    <div class="px-6 py-3 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Applied Rules</h3>
+    </div>
+
+    <% rules_scope = @record.account_rules.joins(:rule) %>
+    <% trading_rules = rules_scope.merge(Rule.trading_rules).order("rules.sort_order") %>
+    <% if trading_rules.any? %>
+      <div class="px-6 py-3 border-b border-gray-100">
+        <div class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Trading Rules</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <% trading_rules.each do |account_rule| %>
+            <div>
+              <div class="text-xs text-gray-500"><%= account_rule.rule.name %></div>
+              <div class="text-base font-semibold text-gray-900">
+                <% if account_rule.rule.data_type == "currency_amount" %>
+                  $<%= number_with_precision(account_rule.rule_value, precision: 2) %>
+                <% else %>
+                  <%= account_rule.rule_value %><%= account_rule.rule.data_type == "percentage" ? "%" : "" %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% trading_restrictions = rules_scope.merge(Rule.trading_restrictions).order("rules.sort_order") %>
+    <% if trading_restrictions.any? %>
+      <div class="px-6 py-3 border-b border-gray-100">
+        <div class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Trading Restrictions</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <% trading_restrictions.each do |account_rule| %>
+            <div>
+              <div class="text-xs text-gray-500"><%= account_rule.rule.name %></div>
+              <div class="text-base font-semibold">
+                <% value_string = account_rule.rule_value.to_s.downcase %>
+                <% if ["true", "1"].include?(value_string) %>
+                  <span class="text-green-600">✓ Allowed</span>
+                <% else %>
+                  <span class="text-red-600">✗ Not Allowed</span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% payout_rules = rules_scope.merge(Rule.payout_rules).order("rules.sort_order") %>
+    <% if payout_rules.any? %>
+      <div class="px-6 py-3 border-b border-gray-100">
+        <div class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Payout Rules</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <% payout_rules.each do |account_rule| %>
+            <div>
+              <div class="text-xs text-gray-500"><%= account_rule.rule.name %></div>
+              <div class="text-base font-semibold text-gray-900">
+                <% if account_rule.rule.data_type == "currency_amount" %>
+                  $<%= number_with_precision(account_rule.rule_value, precision: 2) %>
+                <% else %>
+                  <%= account_rule.rule_value %><% if account_rule.rule.data_type == "percentage" %>%<% elsif account_rule.rule.data_type == "integer_count" %>d<% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% payout_restrictions = rules_scope.merge(Rule.payout_restrictions).order("rules.sort_order") %>
+    <% if payout_restrictions.any? %>
+      <div class="px-6 py-3">
+        <div class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Payout Restrictions</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <% payout_restrictions.each do |account_rule| %>
+            <div>
+              <div class="text-xs text-gray-500"><%= account_rule.rule.name %></div>
+              <div class="text-base font-semibold">
+                <% restriction_value = account_rule.rule_value.to_s.downcase %>
+                <% if ["true", "1"].include?(restriction_value) %>
+                  <span class="text-green-600">✓ Required</span>
+                <% else %>
+                  <span class="text-gray-500">○ Not Required</span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="bg-white rounded-lg shadow px-6 py-4 text-center text-gray-500">
+    No rules applied to this account.
+  </div>
+<% end %>
