@@ -2,6 +2,12 @@
 
 This is a trade tracking and journaling application. More details in [CLAUDE.md](CLAUDE.md).
 
+## Screenshots
+
+![Accounts](Screenshot%20accounts.png)
+![Trades](Screenshot%20trades.png)
+![Journal](Screenshot%20journal.png)
+
 ## Production
 
 To create a new Heroku app for this project:
