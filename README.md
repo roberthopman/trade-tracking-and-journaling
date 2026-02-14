@@ -89,3 +89,5 @@ bin/rake fix
 > A small number of Rubocop's auto-corrections are considered "unsafe" and may
 > occasionally produce incorrect results. After running `fix`, you should
 > review the changes and make sure the code still works as intended.
+
+More details in [CLAUDE.md](CLAUDE.md)
